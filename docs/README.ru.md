@@ -34,7 +34,7 @@
 
 ```lua
 local Lib = loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/ErtyStudio/ErtyHubLibNew/main/src/ErtyHub.lua"
+    "https://raw.githubusercontent.com/ErtyHubCheats/ErtyHubLibNew/main/src/ErtyHub.lua"
 ))()
 ```
 
@@ -65,7 +65,7 @@ local Lib = require(script.Parent.ErtyHub)
 
 ```lua
 local Lib = loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/ErtyStudio/ErtyHubLibNew/main/src/ErtyHub.lua"
+    "https://raw.githubusercontent.com/ErtyHubCheats/ErtyHubLibNew/main/src/ErtyHub.lua"
 ))()
 
 local menu = Lib:Create({

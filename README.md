@@ -23,7 +23,7 @@
 
 ```lua
 local Lib = loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/ErtyStudio/ErtyHubLibNew/main/src/ErtyHub.lua"
+    "https://raw.githubusercontent.com/ErtyHubCheats/ErtyHubLibNew/main/src/ErtyHub.lua"
 ))()
 
 local menu = Lib:Create({
@@ -44,7 +44,7 @@ tab:AddButton({
 menu:Finish()
 ```
 
-Raw URL points to [ErtyStudio/ErtyHubLibNew](https://github.com/ErtyStudio/ErtyHubLibNew).
+Raw URL points to [ErtyHubCheats/ErtyHubLibNew](https://github.com/ErtyHubCheats/ErtyHubLibNew).
 
 > **Important:** Always call `menu:Finish()` at the end. It creates the Settings tab and applies the current theme.
 

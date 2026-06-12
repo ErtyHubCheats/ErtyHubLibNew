@@ -6,7 +6,7 @@
 	Copy this file into your executor and run it. Make sure HttpGet is enabled.
 
 	local Lib = loadstring(game:HttpGet(
-		"https://raw.githubusercontent.com/ErtyStudio/ErtyHubLibNew/main/src/ErtyHub.lua"
+		"https://raw.githubusercontent.com/ErtyHubCheats/ErtyHubLibNew/main/src/ErtyHub.lua"
 	))()
 	-- Then paste the rest of this script below the Lib line (skip the require block).
 
@@ -28,7 +28,7 @@ if script and script.Parent then
 else
 	-- Executor: load from GitHub
 	Lib = loadstring(game:HttpGet(
-		"https://raw.githubusercontent.com/ErtyStudio/ErtyHubLibNew/main/src/ErtyHub.lua"
+		"https://raw.githubusercontent.com/ErtyHubCheats/ErtyHubLibNew/main/src/ErtyHub.lua"
 	))()
 end
 

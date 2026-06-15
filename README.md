@@ -1,17 +1,18 @@
 # ErtyHub
 
-**ErtyHub** is a lightweight, reusable UI menu framework for Roblox executors and Studio. Build tabbed menus with buttons, toggles, sliders, dropdowns, and more — with built-in themes, drag support, and touch-friendly controls.
+**ErtyHub** is a lightweight, reusable UI menu framework for Roblox executors and Studio. Build tabbed menus with buttons, toggles, sliders, dropdowns, keybinds, color pickers, and more — with built-in themes, drag support, and touch-friendly controls.
 
 | | |
 |---|---|
-| **Version** | 1.1.0 |
+| **Version** | 1.2.0 |
 | **Language** | Luau |
 | **License** | [MIT](LICENSE) |
 
 ## Features
 
 - Tabbed interface with animated indicator and horizontal scroll
-- 10+ UI widgets: buttons, toggles, sliders, inputs, dropdowns, labels, separators, titles
+- 12+ UI widgets: buttons, toggles, sliders, inputs, dropdowns, **keybinds**, **color pickers**, labels, separators, titles
+- Custom **version badge** in title bar (`version`, `showVersion` options)
 - 3 built-in themes: **Dark**, **Light**, **Neon** — plus custom theme support
 - Draggable title bar, minimize/restore floating button, close button
 - Auto-generated **Settings** tab (theme picker + compact mode)
@@ -29,6 +30,8 @@ local Lib = loadstring(game:HttpGet(
 local menu = Lib:Create({
     title = "My Script",
     name = "MyScriptMenu",
+    version = "1.0.0",
+    showVersion = true,
 })
 
 local tab = menu:AddTab("Main")
@@ -39,6 +42,18 @@ tab:AddButton({
     callback = function()
         print("Button clicked!")
     end,
+})
+
+tab:AddKeybind({
+    text = "Toggle",
+    key = Enum.KeyCode.RightShift,
+    callback = function(key) end,
+})
+
+tab:AddColorPicker({
+    text = "Color",
+    value = Color3.fromRGB(255, 80, 80),
+    callback = function(color) end,
 })
 
 menu:Finish()
@@ -57,7 +72,7 @@ Raw URL points to [ErtyHubCheats/ErtyHubLibNew](https://github.com/ErtyHubCheats
 ```lua
 local Lib = require(script.Parent.ErtyHub)
 
-local menu = Lib:Create({ title = "My Menu" })
+local menu = Lib:Create({ title = "My Menu", version = "1.0" })
 local tab = menu:AddTab("Home")
 tab:AddLabel({ text = "Hello from Studio!" })
 menu:Finish()
@@ -65,7 +80,7 @@ menu:Finish()
 
 ## Full Example
 
-See [`examples/MenuDemo.lua`](examples/MenuDemo.lua) for a complete demo with two tabs, all widget types, and a custom Neon theme.
+See [`examples/MenuDemo.lua`](examples/MenuDemo.lua) for a complete demo with all widget types, keybind, color picker, and a custom Neon theme.
 
 ## Documentation
 
@@ -92,9 +107,9 @@ ErtyHubLibNew/
 ## Minimal Workflow
 
 ```
-Lib:Create(options)
+Lib:Create({ title, version, showVersion })
   → menu:AddTab("TabName")
-    → tab:AddButton / AddToggle / AddSlider / ...
+    → tab:AddButton / AddToggle / AddKeybind / AddColorPicker / ...
   → menu:AddTheme({ ... })        -- optional
   → menu:Finish()                 -- required
 ```

@@ -1,6 +1,6 @@
 # ErtyHub API Reference
 
-Version **1.1.0**
+Version **1.2.0**
 
 ## Table of Contents
 
@@ -31,7 +31,7 @@ local Lib = require(path.To.ErtyHub)
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `Lib.Version` | `string` | Current version (`"1.1.0"`) |
+| `Lib.Version` | `string` | Library version (`"1.2.0"`) |
 | `Lib.Themes` | `table` | Built-in theme definitions (`Dark`, `Light`, `Neon`) |
 
 ### `Lib:Create(arg1, arg2?)`
@@ -46,6 +46,8 @@ local menu = Lib:Create({
     name = "MyMenuGui",
     parent = nil,
     displayOrder = 10,
+    version = "1.0.0",
+    showVersion = true,
 })
 ```
 
@@ -63,6 +65,8 @@ When using signature B, tabs are pre-registered and `Finish()` is called automat
 | `name` | `string` | `"ErtyHubMenu"` | `ScreenGui` instance name |
 | `parent` | `Instance?` | `PlayerGui` | Parent for the ScreenGui. Falls back to `CoreGui` if no player |
 | `displayOrder` | `number` | `10` | ScreenGui display order |
+| `version` | `string` | `Lib.Version` | Version text shown in title badge and Settings tab |
+| `showVersion` | `boolean` | `true` | Set `false` to hide the version badge |
 
 ### `Lib:AddTheme(opts)`
 
@@ -133,6 +137,8 @@ All methods accept an options table. The `tab` field is set automatically.
 - `AddSlider`
 - `AddDropdown`
 - `AddMultiDropdown`
+- `AddKeybind`
+- `AddColorPicker`
 - `AddLabel`
 - `AddSeparator`
 - `AddPageName`
@@ -251,6 +257,34 @@ Multi-select dropdown. Callback receives a new array copy.
 | `value` | `{string}` | `{}` |
 | `callback` | `function({string})` | — |
 
+### `AddKeybind(opts)`
+
+Keyboard key capture element (PC keyboard only). Click the button to enter listen mode, then press a key.
+
+| Option | Type | Default |
+|--------|------|---------|
+| `text` | `string` | `"Keybind"` |
+| `key` | `Enum.KeyCode?` | `nil` (None) |
+| `callback` | `function(Enum.KeyCode?)` | — |
+
+**Listen mode controls:**
+- Any keyboard key — assigns the key
+- `Backspace` / `Delete` — clears to `None`
+- `Escape` — cancels without changing
+- Click the button again — cancels listen mode
+
+### `AddColorPicker(opts)`
+
+HSV color picker with popup panel (saturation/value square + hue bar).
+
+| Option | Type | Default |
+|--------|------|---------|
+| `text` | `string` | `"Color"` |
+| `value` | `Color3` | `Color3.new(1, 1, 1)` |
+| `callback` | `function(Color3)` | — |
+
+Popup includes live preview, `#RRGGBB` hex on the row button, and `RGB(r, g, b)` label inside the panel.
+
 ---
 
 ## Themes
@@ -345,6 +379,8 @@ toggle:SetValue(true)      -- fires callback
 | **Slider** | `GetValue()` → `number`, `SetValue(number)` |
 | **Dropdown** | `GetValue()` → `string`, `SetValue(item)`, `Close()` |
 | **MultiDropdown** | `GetValue()` → `{string}`, `SetValue(array)`, `Close()` |
+| **Keybind** | `GetValue()` → `Enum.KeyCode?`, `SetValue(keyCode)`, `CancelListen()` |
+| **ColorPicker** | `GetValue()` → `Color3`, `SetValue(color)`, `Close()` |
 | **Label** | `SetText(text)` |
 | **Separator, PageName, Title, Subtitle** | — (no runtime methods) |
 

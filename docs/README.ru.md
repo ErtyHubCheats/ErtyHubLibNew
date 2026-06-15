@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Версия | 1.1.0 |
+| Версия | 1.2.0 |
 | Файл библиотеки | [`src/ErtyHub.lua`](../src/ErtyHub.lua) |
 | Пример | [`examples/MenuDemo.lua`](../examples/MenuDemo.lua) |
 | API (EN) | [API.md](API.md) |
@@ -71,6 +71,8 @@ local Lib = loadstring(game:HttpGet(
 local menu = Lib:Create({
     title = "Мой скрипт",
     name = "MyMenu",
+    version = "1.0.0",
+    showVersion = true,
 })
 
 local tab = menu:AddTab("Главная")
@@ -102,6 +104,8 @@ local menu = Lib:Create({
     name = "ErtyHubDemo",     -- имя ScreenGui
     parent = nil,             -- родитель (по умолчанию PlayerGui)
     displayOrder = 10,        -- порядок отображения ScreenGui
+    version = "2.0.0",        -- версия вашего скрипта в бейдже
+    showVersion = true,       -- false — скрыть бейдж версии
 })
 ```
 
@@ -111,6 +115,8 @@ local menu = Lib:Create({
 | `name` | string | `"ErtyHubMenu"` | Имя экземпляра ScreenGui |
 | `parent` | Instance | PlayerGui | Куда поместить GUI. Если игрока нет — CoreGui |
 | `displayOrder` | number | 10 | Z-порядок ScreenGui |
+| `version` | string | версия библиотеки | Текст в бейдже и на вкладке Settings |
+| `showVersion` | boolean | `true` | `false` — скрыть бейдж версии |
 
 ### Устаревший синтаксис
 
@@ -263,6 +269,47 @@ tab:AddMultiDropdown({
 
 Callback получает **копию** массива выбранных значений.
 
+### Привязка клавиши (Keybind)
+
+Только клавиатура (PC). Нажмите кнопку элемента, затем клавишу на клавиатуре.
+
+```lua
+tab:AddKeybind({
+    text = "Переключить меню",
+    key = Enum.KeyCode.RightShift,
+    callback = function(keyCode)
+        if keyCode then
+            print("Клавиша:", keyCode.Name)
+        else
+            print("Сброшено")
+        end
+    end,
+})
+```
+
+| Клавиша в режиме ожидания | Действие |
+|---------------------------|----------|
+| Любая клавиша | Назначить клавишу |
+| `Backspace` / `Delete` | Сбросить в `None` |
+| `Escape` | Отменить без изменений |
+| Повторный клик по кнопке | Отменить режим ожидания |
+
+### Выбор цвета (ColorPicker)
+
+HSV-панель с квадратом насыщенности/яркости и полоской оттенка.
+
+```lua
+tab:AddColorPicker({
+    text = "Цвет ESP",
+    value = Color3.fromRGB(255, 80, 80),
+    callback = function(color)
+        print("Цвет:", color)
+    end,
+})
+```
+
+В строке отображается hex (`#FF5050`), в панели — `RGB(255, 80, 80)`. Перетаскивайте курсор по квадрату и полоске Hue для точной настройки.
+
 ---
 
 ## Темы оформления
@@ -391,6 +438,8 @@ lbl:SetText("Загружено!")
 | Slider | `GetValue()`, `SetValue(number)` |
 | Dropdown | `GetValue()`, `SetValue(item)`, `Close()` |
 | MultiDropdown | `GetValue()`, `SetValue({...})`, `Close()` |
+| Keybind | `GetValue()`, `SetValue(keyCode)`, `CancelListen()` |
+| ColorPicker | `GetValue()`, `SetValue(color)`, `Close()` |
 | Label | `SetText(text)` |
 
 Получить все элементы: `menu:GetElements()`.

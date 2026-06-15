@@ -1,15 +1,15 @@
 --[[
-	ErtyHub Library v1.1
+	ErtyHub Library v1.2
 	Reusable Roblox UI menu framework.
 	Usage: local Lib = require(path.To.ErtyHub)
-	       local menu = Lib:Create({ "Main", "Visual", "Settings" })
+	       local menu = Lib:Create({ title = "My Script", version = "1.0" })
 ]]
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
-local VERSION = "1.1.0"
+local VERSION = "1.2.0"
 local MAIN_CORNER = 20
 local ELEMENT_HEIGHT = 42
 local MIN_TOUCH = 36
@@ -190,6 +190,43 @@ local function isPointInside(guiObj, x, y)
 	return x >= pos.X and x <= pos.X + size.X and y >= pos.Y and y <= pos.Y + size.Y
 end
 
+local function formatKeyName(keyCode)
+	if not keyCode then
+		return "None"
+	end
+	local name = keyCode.Name
+	name = name:gsub("^Left", "L"):gsub("^Right", "R")
+	return name
+end
+
+local function colorToHex(color)
+	return string.format(
+		"#%02X%02X%02X",
+		math.floor(color.R * 255 + 0.5),
+		math.floor(color.G * 255 + 0.5),
+		math.floor(color.B * 255 + 0.5)
+	)
+end
+
+local function colorToRgbText(color)
+	return string.format(
+		"RGB(%d, %d, %d)",
+		math.floor(color.R * 255 + 0.5),
+		math.floor(color.G * 255 + 0.5),
+		math.floor(color.B * 255 + 0.5)
+	)
+end
+
+local HUE_GRADIENT = ColorSequence.new({
+	ColorSequenceKeypoint.new(0.00, Color3.fromHSV(0, 1, 1)),
+	ColorSequenceKeypoint.new(0.17, Color3.fromHSV(0.17, 1, 1)),
+	ColorSequenceKeypoint.new(0.33, Color3.fromHSV(0.33, 1, 1)),
+	ColorSequenceKeypoint.new(0.50, Color3.fromHSV(0.50, 1, 1)),
+	ColorSequenceKeypoint.new(0.67, Color3.fromHSV(0.67, 1, 1)),
+	ColorSequenceKeypoint.new(0.83, Color3.fromHSV(0.83, 1, 1)),
+	ColorSequenceKeypoint.new(1.00, Color3.fromHSV(1, 1, 1)),
+})
+
 
 -- ─── Menu constructor ────────────────────────────────────────────────────────
 
@@ -203,6 +240,9 @@ local function createMenu(LibRef, tabs, options)
 	menu._currentTheme = "Dark"
 	menu._menuType = "Default"
 	menu._openDropdown = nil
+	menu._openColorPicker = nil
+	menu._activeKeybind = nil
+	menu._version = options.version or VERSION
 	menu._tabNames = {}
 	menu._tabMeta = {}
 	menu._tabContents = {}
@@ -305,7 +345,9 @@ local function createMenu(LibRef, tabs, options)
 	versionBadge.Size = UDim2.new(0, 40, 0, 18)
 	versionBadge.Position = UDim2.new(0, 32, 1, -20)
 	versionBadge.BackgroundTransparency = 1
-	versionBadge.Text = "v" .. VERSION
+	local showVersion = options.showVersion ~= false
+	versionBadge.Text = showVersion and ("v" .. menu._version) or ""
+	versionBadge.Visible = showVersion
 	versionBadge.TextColor3 = BUILTIN_THEMES.Dark.subTextColor
 	versionBadge.TextSize = 10
 	versionBadge.Font = Enum.Font.GothamMedium
@@ -588,6 +630,8 @@ local function createMenu(LibRef, tabs, options)
 	function menu:Minimize()
 		if self._destroyed then return end
 		if self._openDropdown then self._openDropdown:Close() end
+		if self._openColorPicker then self._openColorPicker:Close() end
+		if self._activeKeybind then self._activeKeybind:CancelListen() end
 		placeRestoreNearMenu()
 		mainFrame.Visible = false
 		restoreBtn.Visible = true
@@ -648,6 +692,8 @@ local function createMenu(LibRef, tabs, options)
 
 	conn(closeBtn.MouseButton1Click, function()
 		if menu._openDropdown then menu._openDropdown:Close() end
+		if menu._openColorPicker then menu._openColorPicker:Close() end
+		if menu._activeKeybind then menu._activeKeybind:CancelListen() end
 		mainFrame.Visible = false
 		restoreBtn.Visible = false
 		screenGui.Enabled = false
@@ -661,21 +707,46 @@ local function createMenu(LibRef, tabs, options)
 		tween(restoreScale, { Scale = 1 }):Play()
 	end)
 
-	-- Global click-outside for dropdowns
+	-- Global input: keybind capture + click-outside overlays
 	conn(UserInputService.InputBegan, function(input)
 		if menu._destroyed then return end
+
+		if menu._activeKeybind and input.UserInputType == Enum.UserInputType.Keyboard then
+			local kb = menu._activeKeybind
+			if input.KeyCode == Enum.KeyCode.Escape then
+				kb:CancelListen()
+			elseif input.KeyCode == Enum.KeyCode.Backspace or input.KeyCode == Enum.KeyCode.Delete then
+				kb:SetKey(nil)
+				kb:CancelListen()
+			else
+				kb:SetKey(input.KeyCode)
+				kb:CancelListen()
+			end
+			return
+		end
+
 		if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then
 			return
 		end
-		if not menu._openDropdown then return end
 
 		local pos = input.Position
-		local dd = menu._openDropdown
-		local inside = isPointInside(dd._container, pos.X, pos.Y)
-			or isPointInside(dd._listFrame, pos.X, pos.Y)
 
-		if not inside and dd.Close then
-			dd:Close()
+		if menu._openColorPicker then
+			local cp = menu._openColorPicker
+			local inside = isPointInside(cp._container, pos.X, pos.Y)
+				or isPointInside(cp._panel, pos.X, pos.Y)
+			if not inside and cp.Close then
+				cp:Close()
+			end
+		end
+
+		if menu._openDropdown then
+			local dd = menu._openDropdown
+			local inside = isPointInside(dd._container, pos.X, pos.Y)
+				or isPointInside(dd._listFrame, pos.X, pos.Y)
+			if not inside and dd.Close then
+				dd:Close()
+			end
 		end
 	end)
 
@@ -705,6 +776,18 @@ local function createMenu(LibRef, tabs, options)
 	function menu:_closeOpenDropdown(except)
 		if self._openDropdown and self._openDropdown ~= except then
 			self._openDropdown:Close()
+		end
+	end
+
+	function menu:_closeOpenColorPicker(except)
+		if self._openColorPicker and self._openColorPicker ~= except then
+			self._openColorPicker:Close()
+		end
+	end
+
+	function menu:_cancelActiveKeybind(except)
+		if self._activeKeybind and self._activeKeybind ~= except then
+			self._activeKeybind:CancelListen()
 		end
 	end
 
@@ -996,6 +1079,8 @@ local function createMenu(LibRef, tabs, options)
 		bind("AddSlider")
 		bind("AddLabel")
 		bind("AddSeparator")
+		bind("AddKeybind")
+		bind("AddColorPicker")
 
 		return tab
 	end
@@ -1629,6 +1714,8 @@ local function createMenu(LibRef, tabs, options)
 
 		function dd:Open()
 			menu:_closeOpenDropdown(self)
+			menu:_closeOpenColorPicker()
+			menu:_cancelActiveKeybind()
 			isOpen = true
 			self._isOpen = true
 			menu._openDropdown = self
@@ -1793,6 +1880,431 @@ local function createMenu(LibRef, tabs, options)
 		return createDropdown(self, opts, true)
 	end
 
+	-- ─── AddKeybind ──────────────────────────────────────────────────────────
+
+	function menu:AddKeybind(opts)
+		opts = opts or {}
+		local tab = opts.tab or self._tabNames[1]
+		local theme = self:_getTheme()
+		local h = math.max(MIN_TOUCH, theme.elementHeight)
+		local currentKey = opts.key
+
+		local row = self:_makeRow(tab, h)
+		local card = addThemedCard(row, theme, h)
+
+		local lbl = self:_makeLabel(card, opts.text or "Keybind", 14, theme.textColor, false)
+		lbl.Size = UDim2.new(1, -100, 1, 0)
+		lbl.Position = UDim2.new(0, 12, 0, 0)
+
+		local keyBtn = Instance.new("TextButton")
+		keyBtn.Name = "KeyButton"
+		keyBtn.Size = UDim2.new(0, 84, 0, 28)
+		keyBtn.Position = UDim2.new(1, -92, 0.5, -14)
+		keyBtn.BackgroundColor3 = theme.contentColor
+		keyBtn.Text = formatKeyName(currentKey)
+		keyBtn.TextColor3 = theme.textColor
+		keyBtn.TextSize = 12
+		keyBtn.Font = Enum.Font.GothamBold
+		keyBtn.BorderSizePixel = 0
+		keyBtn.AutoButtonColor = false
+		keyBtn.Active = true
+		keyBtn.ClipsDescendants = true
+		keyBtn.Parent = card
+		addCorner(keyBtn, 6)
+		local keyStroke = addStroke(keyBtn, theme.strokeColor, 1, 0.3)
+
+		local listening = false
+
+		local kb = {
+			_listening = false,
+		}
+
+		local function updateDisplay()
+			keyBtn.Text = listening and "..." or formatKeyName(currentKey)
+		end
+
+		local function setListenState(active)
+			listening = active
+			kb._listening = active
+			local t = self:_getTheme()
+			if active then
+				self:_cancelActiveKeybind(kb)
+				self._activeKeybind = kb
+				self:_closeOpenDropdown()
+				self:_closeOpenColorPicker()
+				keyStroke.Color = t.accentColor
+				tween(keyBtn, { BackgroundColor3 = t.hoverColor }):Play()
+			else
+				if self._activeKeybind == kb then
+					self._activeKeybind = nil
+				end
+				keyStroke.Color = t.strokeColor
+				tween(keyBtn, { BackgroundColor3 = t.contentColor }):Play()
+			end
+			updateDisplay()
+		end
+
+		local function setKey(keyCode, fireCb)
+			currentKey = keyCode
+			updateDisplay()
+			if fireCb ~= false and opts.callback then
+				opts.callback(currentKey)
+			end
+		end
+
+		function kb:SetKey(keyCode)
+			setKey(keyCode)
+		end
+
+		function kb:CancelListen()
+			setListenState(false)
+		end
+
+		function kb:StartListen()
+			setListenState(true)
+		end
+
+		conn(keyBtn.MouseButton1Click, function()
+			if listening then
+				kb:CancelListen()
+			else
+				kb:StartListen()
+			end
+		end)
+
+		local el = {
+			type = "Keybind",
+			tab = tab,
+			instance = row,
+			_bg = card,
+			_label = lbl,
+			_keybind = kb,
+			GetValue = function() return currentKey end,
+			SetValue = function(_, keyCode) setKey(keyCode) end,
+			CancelListen = function() kb:CancelListen() end,
+			_applyTheme = function(_, t)
+				card.BackgroundColor3 = t.elementColor
+				lbl.TextColor3 = t.textColor
+				if not listening then
+					keyBtn.BackgroundColor3 = t.contentColor
+					keyStroke.Color = t.strokeColor
+				else
+					keyStroke.Color = t.accentColor
+				end
+				keyBtn.TextColor3 = t.textColor
+			end,
+		}
+		return self:_registerElement(el)
+	end
+
+	-- ─── AddColorPicker ──────────────────────────────────────────────────────
+
+	function menu:AddColorPicker(opts)
+		opts = opts or {}
+		local tab = opts.tab or self._tabNames[1]
+		local theme = self:_getTheme()
+		local h = math.max(MIN_TOUCH, theme.elementHeight)
+		local color = opts.value or Color3.fromRGB(255, 255, 255)
+		local hue, sat, val = color:ToHSV()
+
+		local row = self:_makeRow(tab, h)
+		row.ClipsDescendants = false
+
+		local container = Instance.new("Frame")
+		container.Name = "ColorPicker"
+		container.Size = UDim2.new(1, 0, 1, 0)
+		container.BackgroundColor3 = theme.elementColor
+		container.BorderSizePixel = 0
+		container.ClipsDescendants = true
+		container.ZIndex = 1
+		container.Parent = row
+		addCorner(container, theme.cornerRadius)
+
+		local lbl = self:_makeLabel(container, opts.text or "Color", 13, theme.textColor, false)
+		lbl.Size = UDim2.new(0.42, 0, 1, 0)
+		lbl.Position = UDim2.new(0, 12, 0, 0)
+		lbl.ZIndex = 2
+
+		local previewBtn = Instance.new("TextButton")
+		previewBtn.Name = "Preview"
+		previewBtn.Size = UDim2.new(0.52, -8, 0, math.max(28, h - 8))
+		previewBtn.Position = UDim2.new(0.46, 0, 0.5, 0)
+		previewBtn.AnchorPoint = Vector2.new(0, 0.5)
+		previewBtn.BackgroundColor3 = color
+		previewBtn.Text = colorToHex(color)
+		previewBtn.TextColor3 = (color.R * 0.299 + color.G * 0.587 + color.B * 0.114) > 0.55
+			and Color3.new(0, 0, 0) or Color3.new(1, 1, 1)
+		previewBtn.TextSize = 12
+		previewBtn.Font = Enum.Font.GothamBold
+		previewBtn.BorderSizePixel = 0
+		previewBtn.AutoButtonColor = false
+		previewBtn.Active = true
+		previewBtn.ZIndex = 2
+		previewBtn.ClipsDescendants = true
+		previewBtn.Parent = container
+		addCorner(previewBtn, 6)
+		addStroke(previewBtn, theme.strokeColor, 1, 0.35)
+
+		local panel = Instance.new("Frame")
+		panel.Name = "Panel"
+		panel.Size = UDim2.new(0, 220, 0, 0)
+		panel.BackgroundColor3 = theme.contentColor
+		panel.BorderSizePixel = 0
+		panel.ClipsDescendants = true
+		panel.Visible = false
+		panel.ZIndex = 60
+		panel.Parent = menu._gui.dropdownOverlay
+		addCorner(panel, 10)
+		local panelStroke = addStroke(panel, theme.strokeColor, 1, 0.2)
+
+		local panelList = addList(panel, 8)
+		addPadding(panel, 10, 10, 10, 10)
+
+		local previewBar = Instance.new("Frame")
+		previewBar.Name = "PreviewBar"
+		previewBar.Size = UDim2.new(1, 0, 0, 24)
+		previewBar.BackgroundColor3 = color
+		previewBar.BorderSizePixel = 0
+		previewBar.LayoutOrder = 1
+		previewBar.ZIndex = 61
+		previewBar.Parent = panel
+		addCorner(previewBar, 6)
+
+		local sbArea = Instance.new("Frame")
+		sbArea.Name = "SBArea"
+		sbArea.Size = UDim2.new(1, 0, 0, 100)
+		sbArea.BackgroundTransparency = 1
+		sbArea.LayoutOrder = 2
+		sbArea.ZIndex = 61
+		sbArea.Parent = panel
+
+		local sbBg = Instance.new("Frame")
+		sbBg.Name = "HueBase"
+		sbBg.Size = UDim2.new(1, 0, 1, 0)
+		sbBg.BorderSizePixel = 0
+		sbBg.ZIndex = 61
+		sbBg.Parent = sbArea
+		addCorner(sbBg, 6)
+
+		local satOverlay = Instance.new("Frame")
+		satOverlay.Size = UDim2.new(1, 0, 1, 0)
+		satOverlay.BackgroundColor3 = Color3.new(1, 1, 1)
+		satOverlay.BorderSizePixel = 0
+		satOverlay.ZIndex = 62
+		satOverlay.Parent = sbBg
+		addCorner(satOverlay, 6)
+		local satGrad = Instance.new("UIGradient")
+		satGrad.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0),
+			NumberSequenceKeypoint.new(1, 1),
+		})
+		satGrad.Parent = satOverlay
+
+		local valOverlay = Instance.new("Frame")
+		valOverlay.Size = UDim2.new(1, 0, 1, 0)
+		valOverlay.BackgroundColor3 = Color3.new(0, 0, 0)
+		valOverlay.BorderSizePixel = 0
+		valOverlay.ZIndex = 63
+		valOverlay.Parent = sbBg
+		addCorner(valOverlay, 6)
+		local valGrad = Instance.new("UIGradient")
+		valGrad.Rotation = 90
+		valGrad.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1),
+			NumberSequenceKeypoint.new(1, 0),
+		})
+		valGrad.Parent = valOverlay
+
+		local sbCursor = Instance.new("Frame")
+		sbCursor.Name = "SBCursor"
+		sbCursor.Size = UDim2.new(0, 12, 0, 12)
+		sbCursor.AnchorPoint = Vector2.new(0.5, 0.5)
+		sbCursor.BackgroundColor3 = Color3.new(1, 1, 1)
+		sbCursor.BorderSizePixel = 0
+		sbCursor.ZIndex = 64
+		sbCursor.Parent = sbBg
+		addCorner(sbCursor, 6)
+		addStroke(sbCursor, Color3.new(0, 0, 0), 1, 0.4)
+
+		local hueTrack = Instance.new("Frame")
+		hueTrack.Name = "HueTrack"
+		hueTrack.Size = UDim2.new(1, 0, 0, 12)
+		hueTrack.BackgroundColor3 = Color3.new(1, 1, 1)
+		hueTrack.BorderSizePixel = 0
+		hueTrack.LayoutOrder = 3
+		hueTrack.ZIndex = 61
+		hueTrack.Parent = panel
+		addCorner(hueTrack, 6)
+		local hueGrad = Instance.new("UIGradient")
+		hueGrad.Color = HUE_GRADIENT
+		hueGrad.Parent = hueTrack
+
+		local hueCursor = Instance.new("Frame")
+		hueCursor.Name = "HueCursor"
+		hueCursor.Size = UDim2.new(0, 4, 1, 4)
+		hueCursor.AnchorPoint = Vector2.new(0.5, 0.5)
+		hueCursor.Position = UDim2.new(hue, 0, 0.5, 0)
+		hueCursor.BackgroundColor3 = Color3.new(1, 1, 1)
+		hueCursor.BorderSizePixel = 0
+		hueCursor.ZIndex = 62
+		hueCursor.Parent = hueTrack
+		addCorner(hueCursor, 2)
+		addStroke(hueCursor, Color3.new(0, 0, 0), 1, 0.3)
+
+		local infoLbl = self:_makeLabel(panel, colorToRgbText(color), 11, theme.subTextColor, false)
+		infoLbl.Size = UDim2.new(1, 0, 0, 16)
+		infoLbl.LayoutOrder = 4
+		infoLbl.TextXAlignment = Enum.TextXAlignment.Center
+		infoLbl.ZIndex = 61
+
+		local isOpen = false
+		local draggingSB = false
+		local draggingHue = false
+		local panelHeight = 188
+
+		local cp = {
+			_container = container,
+			_panel = panel,
+			_isOpen = false,
+		}
+
+		local function updateFromHsv(fireCb)
+			color = Color3.fromHSV(hue, sat, val)
+			sbBg.BackgroundColor3 = Color3.fromHSV(hue, 1, 1)
+			sbCursor.Position = UDim2.new(sat, 0, 1 - val, 0)
+			hueCursor.Position = UDim2.new(hue, 0, 0.5, 0)
+			previewBar.BackgroundColor3 = color
+			previewBtn.BackgroundColor3 = color
+			previewBtn.Text = colorToHex(color)
+			previewBtn.TextColor3 = (color.R * 0.299 + color.G * 0.587 + color.B * 0.114) > 0.55
+				and Color3.new(0, 0, 0) or Color3.new(1, 1, 1)
+			infoLbl.Text = colorToRgbText(color)
+			if fireCb ~= false and opts.callback then
+				opts.callback(color)
+			end
+		end
+
+		local function positionPanel()
+			local btnPos = previewBtn.AbsolutePosition
+			local btnSize = previewBtn.AbsoluteSize
+			local overlayPos = menu._gui.dropdownOverlay.AbsolutePosition
+			panel.Position = UDim2.new(
+				0,
+				btnPos.X - overlayPos.X,
+				0,
+				btnPos.Y - overlayPos.Y + btnSize.Y + 4
+			)
+		end
+
+		function cp:Close()
+			if not isOpen then return end
+			isOpen = false
+			self._isOpen = false
+			if menu._openColorPicker == self then
+				menu._openColorPicker = nil
+			end
+			tween(panel, { Size = UDim2.new(0, 220, 0, 0) }, TWEEN_OPEN):Play()
+			task.delay(0.2, function()
+				if panel.Parent then
+					panel.Visible = false
+				end
+			end)
+		end
+
+		function cp:Open()
+			menu:_closeOpenColorPicker(self)
+			menu:_closeOpenDropdown()
+			menu:_cancelActiveKeybind()
+			isOpen = true
+			self._isOpen = true
+			menu._openColorPicker = self
+			positionPanel()
+			panel.Visible = true
+			panel.Size = UDim2.new(0, 220, 0, 0)
+			updateFromHsv(false)
+			tween(panel, { Size = UDim2.new(0, 220, 0, panelHeight) }, TWEEN_OPEN):Play()
+		end
+
+		function cp:Toggle()
+			if isOpen then self:Close() else self:Open() end
+		end
+
+		local function updateSBFromInput(input)
+			local pos = sbBg.AbsolutePosition
+			local size = sbBg.AbsoluteSize
+			sat = math.clamp((input.Position.X - pos.X) / size.X, 0, 1)
+			val = 1 - math.clamp((input.Position.Y - pos.Y) / size.Y, 0, 1)
+			updateFromHsv()
+		end
+
+		local function updateHueFromInput(input)
+			local pos = hueTrack.AbsolutePosition
+			local size = hueTrack.AbsoluteSize
+			hue = math.clamp((input.Position.X - pos.X) / size.X, 0, 1)
+			updateFromHsv()
+		end
+
+		conn(sbBg.InputBegan, function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				draggingSB = true
+				updateSBFromInput(input)
+			end
+		end)
+
+		conn(hueTrack.InputBegan, function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				draggingHue = true
+				updateHueFromInput(input)
+			end
+		end)
+
+		conn(UserInputService.InputChanged, function(input)
+			if draggingSB and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+				updateSBFromInput(input)
+			elseif draggingHue and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+				updateHueFromInput(input)
+			end
+		end)
+
+		conn(UserInputService.InputEnded, function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				draggingSB = false
+				draggingHue = false
+			end
+		end)
+
+		conn(previewBtn.MouseButton1Click, function()
+			cp:Toggle()
+		end)
+
+		updateFromHsv(false)
+
+		local el = {
+			type = "ColorPicker",
+			tab = tab,
+			instance = row,
+			_bg = container,
+			_label = lbl,
+			_picker = cp,
+			GetValue = function() return color end,
+			SetValue = function(_, newColor)
+				if typeof(newColor) ~= "Color3" then return end
+				color = newColor
+				hue, sat, val = color:ToHSV()
+				updateFromHsv(false)
+			end,
+			Close = function() cp:Close() end,
+			_applyTheme = function(_, t)
+				container.BackgroundColor3 = t.elementColor
+				lbl.TextColor3 = t.textColor
+				panel.BackgroundColor3 = t.contentColor
+				panelStroke.Color = t.strokeColor
+				infoLbl.TextColor3 = t.subTextColor
+			end,
+		}
+		return self:_registerElement(el)
+	end
+
 	-- ─── AddTheme ────────────────────────────────────────────────────────────
 
 	function menu:AddTheme(opts)
@@ -1819,6 +2331,12 @@ local function createMenu(LibRef, tabs, options)
 		self._destroyed = true
 		if self._openDropdown then
 			self._openDropdown:Close()
+		end
+		if self._openColorPicker then
+			self._openColorPicker:Close()
+		end
+		if self._activeKeybind then
+			self._activeKeybind:CancelListen()
 		end
 		for _, c in ipairs(self._connections) do
 			c:Disconnect()
@@ -1889,7 +2407,7 @@ local function createMenu(LibRef, tabs, options)
 
 		self:AddLabel({
 			tab = "Settings",
-			text = "ErtyHub v" .. VERSION,
+			text = "ErtyHub v" .. self._version,
 		})
 	end
 

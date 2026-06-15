@@ -37,6 +37,8 @@ end
 local menu = Lib:Create({
 	title = "ErtyHub Demo",
 	name = "ErtyHubDemo",
+	version = "2.0.0",
+	showVersion = true,
 })
 
 menu:AddTheme({
@@ -117,6 +119,26 @@ TVisual:AddInput({
 	value = "",
 	callback = function(val)
 		print("[ErtyHub] Input:", val)
+	end,
+})
+
+TVisual:AddKeybind({
+	text = "Toggle key",
+	key = Enum.KeyCode.RightShift,
+	callback = function(keyCode)
+		if keyCode then
+			print("[ErtyHub] Keybind:", keyCode.Name)
+		else
+			print("[ErtyHub] Keybind cleared")
+		end
+	end,
+})
+
+TVisual:AddColorPicker({
+	text = "Accent color",
+	value = Color3.fromRGB(255, 80, 80),
+	callback = function(color)
+		print("[ErtyHub] Color:", color)
 	end,
 })
 

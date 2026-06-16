@@ -456,7 +456,8 @@ local function createMenu(LibRef, tabs, options)
 
 	local notifyStack = Instance.new("Frame")
 	notifyStack.Name = "NotifyStack"
-	notifyStack.Size = UDim2.new(0, 300, 1, -32)
+	notifyStack.Size = UDim2.new(0, 300, 0, 0)
+	notifyStack.AutomaticSize = Enum.AutomaticSize.Y
 	notifyStack.Position = UDim2.new(1, -16, 0, 16)
 	notifyStack.AnchorPoint = Vector2.new(1, 0)
 	notifyStack.BackgroundTransparency = 1
@@ -2372,39 +2373,30 @@ local function createMenu(LibRef, tabs, options)
 		addCorner(card, theme.cornerRadius or 10)
 		addGradient(card, theme.elementColor, theme.backgroundColor2, 145)
 		addStroke(card, theme.strokeColor, 1, 0.35)
-
-		local row = Instance.new("Frame")
-		row.Name = "Row"
-		row.Size = UDim2.new(1, 0, 0, 0)
-		row.AutomaticSize = Enum.AutomaticSize.Y
-		row.BackgroundTransparency = 1
-		row.Parent = card
-		addPadding(row, 10, 10, 10, 10)
-
-		local rowLayout = Instance.new("UIListLayout")
-		rowLayout.FillDirection = Enum.FillDirection.Horizontal
-		rowLayout.Padding = UDim.new(0, 8)
-		rowLayout.SortOrder = Enum.SortOrder.LayoutOrder
-		rowLayout.Parent = row
+		addPadding(card, 10, 10, 10, 14)
 
 		local accentBar = Instance.new("Frame")
 		accentBar.Name = "Accent"
-		accentBar.Size = UDim2.new(0, 4, 1, 0)
+		accentBar.Size = UDim2.new(0, 4, 0, 0)
+		accentBar.Position = UDim2.new(0, 10, 0, 10)
 		accentBar.BackgroundColor3 = theme.accentColor
 		accentBar.BorderSizePixel = 0
-		accentBar.LayoutOrder = 1
-		accentBar.Parent = row
+		accentBar.Parent = card
 		addCorner(accentBar, 2)
 		addGradient(accentBar, theme.accentColor, theme.accentColor2, 90)
 
 		local content = Instance.new("Frame")
 		content.Name = "Content"
-		content.Size = UDim2.new(1, -12, 0, 0)
+		content.Size = UDim2.new(1, 0, 0, 0)
 		content.AutomaticSize = Enum.AutomaticSize.Y
 		content.BackgroundTransparency = 1
-		content.LayoutOrder = 2
-		content.Parent = row
+		content.Parent = card
 		addList(content, 4)
+
+		local function syncAccentHeight()
+			accentBar.Size = UDim2.new(0, 4, 0, content.AbsoluteSize.Y)
+		end
+		content:GetPropertyChangedSignal("AbsoluteSize"):Connect(syncAccentHeight)
 
 		local titleLbl = Instance.new("TextLabel")
 		titleLbl.Name = "Title"
@@ -2438,6 +2430,8 @@ local function createMenu(LibRef, tabs, options)
 		textLbl.LayoutOrder = 2
 		textLbl.Visible = text ~= ""
 		textLbl.Parent = content
+
+		task.defer(syncAccentHeight)
 
 		local handle = {
 			_dismissed = false,

@@ -7,11 +7,16 @@
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
+local TextService = game:GetService("TextService")
 local UserInputService = game:GetService("UserInputService")
 
 local VERSION = "1.2.0"
 local MAIN_CORNER = 20
 local ELEMENT_HEIGHT = 42
+local NOTIFY_WIDTH = 300
+local NOTIFY_MAX_HEIGHT = 400
+local NOTIFY_MARGIN_RIGHT = 16
+local NOTIFY_MARGIN_BOTTOM = 100
 local MIN_TOUCH = 36
 local TITLE_HEIGHT = 48
 local TAB_BAR_HEIGHT = 44
@@ -119,6 +124,14 @@ local function addList(parent, padding, direction)
 	l.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	l.Parent = parent
 	return l
+end
+
+local function measureWrappedText(text, width, textSize, font)
+	if text == "" then
+		return 0
+	end
+	local measured = TextService:GetTextSize(text, textSize, font, Vector2.new(width, 10000)).Y
+	return math.ceil(measured + math.max(2, math.floor(textSize * 0.15)))
 end
 
 local function addGradient(parent, color1, color2, rotation)
@@ -456,10 +469,10 @@ local function createMenu(LibRef, tabs, options)
 
 	local notifyStack = Instance.new("Frame")
 	notifyStack.Name = "NotifyStack"
-	notifyStack.Size = UDim2.new(0, 300, 0, 0)
+	notifyStack.Size = UDim2.fromOffset(NOTIFY_WIDTH, 0)
 	notifyStack.AutomaticSize = Enum.AutomaticSize.Y
-	notifyStack.Position = UDim2.new(1, -16, 0, 16)
-	notifyStack.AnchorPoint = Vector2.new(1, 0)
+	notifyStack.Position = UDim2.new(1, -NOTIFY_MARGIN_RIGHT, 1, -NOTIFY_MARGIN_BOTTOM)
+	notifyStack.AnchorPoint = Vector2.new(1, 1)
 	notifyStack.BackgroundTransparency = 1
 	notifyStack.Parent = notificationLayer
 	addList(notifyStack, 8)
@@ -2354,54 +2367,70 @@ local function createMenu(LibRef, tabs, options)
 		local theme = self:_getTheme()
 		local stack = self._gui.notifyStack
 
+		local padTop, padBottom, padLeft, padRight = 10, 10, 10, 14
+		local rowGap = 8
+		local accentWidth = 4
+		local textGap = 4
+		local textWidth = NOTIFY_WIDTH - padLeft - padRight - accentWidth - rowGap
+		local contentLeft = padLeft + accentWidth + rowGap
+
+		local function computeHeights()
+			local titleHeight = measureWrappedText(title, textWidth, 15, Enum.Font.GothamBold)
+			local textHeight = text ~= "" and measureWrappedText(text, textWidth, 13, Enum.Font.GothamMedium) or 0
+			local contentHeight = titleHeight + (text ~= "" and (textGap + textHeight) or 0)
+			local cardHeight = padTop + padBottom + contentHeight
+			return titleHeight, textHeight, contentHeight, cardHeight
+		end
+
+		local titleHeight, textHeight, contentHeight, cardHeight = computeHeights()
+
 		local wrapper = Instance.new("Frame")
 		wrapper.Name = "NotifyWrapper"
-		wrapper.Size = UDim2.new(1, 0, 0, 0)
-		wrapper.AutomaticSize = Enum.AutomaticSize.Y
+		wrapper.Size = UDim2.fromOffset(NOTIFY_WIDTH, cardHeight)
 		wrapper.BackgroundTransparency = 1
+		wrapper.ClipsDescendants = true
 		wrapper.Parent = stack
 
 		local card = Instance.new("Frame")
 		card.Name = "NotifyCard"
-		card.Size = UDim2.new(1, 0, 0, 0)
-		card.AutomaticSize = Enum.AutomaticSize.Y
+		card.Size = UDim2.fromOffset(NOTIFY_WIDTH, cardHeight)
 		card.BackgroundColor3 = theme.elementColor
 		card.BackgroundTransparency = 1
 		card.BorderSizePixel = 0
-		card.Position = UDim2.new(0, 20, 0, 0)
+		card.Position = UDim2.new(0, 0, 0, 16)
+		card.ClipsDescendants = true
 		card.Parent = wrapper
 		addCorner(card, theme.cornerRadius or 10)
 		addGradient(card, theme.elementColor, theme.backgroundColor2, 145)
 		addStroke(card, theme.strokeColor, 1, 0.35)
-		addPadding(card, 10, 10, 10, 14)
+
+		local sizeConstraint = Instance.new("UISizeConstraint")
+		sizeConstraint.MaxSize = Vector2.new(NOTIFY_WIDTH, NOTIFY_MAX_HEIGHT)
+		sizeConstraint.Parent = card
 
 		local accentBar = Instance.new("Frame")
 		accentBar.Name = "Accent"
-		accentBar.Size = UDim2.new(0, 4, 0, 0)
-		accentBar.Position = UDim2.new(0, 10, 0, 10)
+		accentBar.Size = UDim2.new(0, accentWidth, 1, -(padTop + padBottom))
+		accentBar.Position = UDim2.fromOffset(padLeft, padTop)
 		accentBar.BackgroundColor3 = theme.accentColor
 		accentBar.BorderSizePixel = 0
+		accentBar.ZIndex = 2
 		accentBar.Parent = card
 		addCorner(accentBar, 2)
 		addGradient(accentBar, theme.accentColor, theme.accentColor2, 90)
 
 		local content = Instance.new("Frame")
 		content.Name = "Content"
-		content.Size = UDim2.new(1, 0, 0, 0)
-		content.AutomaticSize = Enum.AutomaticSize.Y
+		content.Size = UDim2.fromOffset(textWidth, contentHeight)
+		content.Position = UDim2.fromOffset(contentLeft, padTop)
 		content.BackgroundTransparency = 1
+		content.ZIndex = 2
 		content.Parent = card
-		addList(content, 4)
-
-		local function syncAccentHeight()
-			accentBar.Size = UDim2.new(0, 4, 0, content.AbsoluteSize.Y)
-		end
-		content:GetPropertyChangedSignal("AbsoluteSize"):Connect(syncAccentHeight)
+		addList(content, textGap)
 
 		local titleLbl = Instance.new("TextLabel")
 		titleLbl.Name = "Title"
-		titleLbl.Size = UDim2.new(1, 0, 0, 0)
-		titleLbl.AutomaticSize = Enum.AutomaticSize.Y
+		titleLbl.Size = UDim2.fromOffset(textWidth, titleHeight)
 		titleLbl.BackgroundTransparency = 1
 		titleLbl.Text = title
 		titleLbl.TextColor3 = theme.textColor
@@ -2416,8 +2445,7 @@ local function createMenu(LibRef, tabs, options)
 
 		local textLbl = Instance.new("TextLabel")
 		textLbl.Name = "Text"
-		textLbl.Size = UDim2.new(1, 0, 0, 0)
-		textLbl.AutomaticSize = Enum.AutomaticSize.Y
+		textLbl.Size = UDim2.fromOffset(textWidth, textHeight)
 		textLbl.BackgroundTransparency = 1
 		textLbl.Text = text
 		textLbl.TextColor3 = theme.subTextColor
@@ -2431,7 +2459,22 @@ local function createMenu(LibRef, tabs, options)
 		textLbl.Visible = text ~= ""
 		textLbl.Parent = content
 
-		task.defer(syncAccentHeight)
+		local function applyNotifySizes()
+			if not wrapper.Parent then
+				return
+			end
+			local newTitleHeight, newTextHeight, newContentHeight, newCardHeight = computeHeights()
+			wrapper.Size = UDim2.fromOffset(NOTIFY_WIDTH, newCardHeight)
+			card.Size = UDim2.fromOffset(NOTIFY_WIDTH, newCardHeight)
+			content.Size = UDim2.fromOffset(textWidth, newContentHeight)
+			content.Position = UDim2.fromOffset(contentLeft, padTop)
+			titleLbl.Size = UDim2.fromOffset(textWidth, newTitleHeight)
+			if text ~= "" then
+				textLbl.Size = UDim2.fromOffset(textWidth, newTextHeight)
+			end
+		end
+
+		task.defer(applyNotifySizes)
 
 		local handle = {
 			_dismissed = false,
@@ -2456,7 +2499,7 @@ local function createMenu(LibRef, tabs, options)
 			if self._dismissed or not self._wrapper.Parent then return end
 			self._dismissed = true
 			local outTween = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
-			tween(self._card, { BackgroundTransparency = 1, Position = UDim2.new(0, 20, 0, 0) }, outTween):Play()
+			tween(self._card, { BackgroundTransparency = 1, Position = UDim2.new(0, 0, 0, 16) }, outTween):Play()
 			tween(self._titleLbl, { TextTransparency = 1 }, outTween):Play()
 			if self._textLbl.Visible then
 				tween(self._textLbl, { TextTransparency = 1 }, outTween):Play()

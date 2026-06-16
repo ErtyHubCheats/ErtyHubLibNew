@@ -348,7 +348,7 @@ After `Finish()`, the Settings tab includes:
 
 ### `menu:Notify(opts)`
 
-Shows a temporary toast notification in the top-right corner. Notifications remain visible when the menu is minimized.
+Shows a temporary toast notification in the bottom-right corner (with margin from the screen edge). Notifications remain visible when the menu is minimized.
 
 ```lua
 menu:Notify({

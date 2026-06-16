@@ -9,6 +9,7 @@ Version **1.2.0**
 - [Tabs](#tabs)
 - [UI Elements](#ui-elements)
 - [Themes](#themes)
+- [Notifications](#notifications)
 - [Window Control](#window-control)
 - [Element Runtime API](#element-runtime-api)
 - [Common Options](#common-options)
@@ -343,6 +344,36 @@ After `Finish()`, the Settings tab includes:
 
 ---
 
+## Notifications
+
+### `menu:Notify(opts)`
+
+Shows a temporary toast notification in the top-right corner. Notifications remain visible when the menu is minimized.
+
+```lua
+menu:Notify({
+    title = "Success",
+    text = "Settings saved.",
+    duration = 4,
+})
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `title` | `string` | `"Notification"` | Notification title |
+| `text` | `string` | `""` | Body text |
+| `duration` | `number` | `3` | Display time in seconds before auto-dismiss |
+
+Returns a handle with:
+
+| Method | Description |
+|--------|-------------|
+| `handle:Dismiss()` | Manually close the notification early |
+
+Multiple notifications stack vertically. Colors follow the menu's active theme.
+
+---
+
 ## Window Control
 
 | Method | Description |
@@ -424,6 +455,7 @@ menu:SetTheme(name: string)
 menu:GetTheme() -> string
 menu:ApplyTheme(name: string)
 menu:AddTheme(opts: table) -> themeTable
+menu:Notify(opts: table) -> notifyHandle
 menu:Show() / menu:Hide() / menu:Minimize() / menu:Restore()
 menu:Destroy()
 menu:GetElements() -> { elementHandle }

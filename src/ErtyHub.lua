@@ -446,6 +446,25 @@ local function createMenu(LibRef, tabs, options)
 	restoreScale.Scale = 1
 	restoreScale.Parent = restoreBtn
 
+	-- Notification layer (visible even when menu is minimized)
+	local notificationLayer = Instance.new("Frame")
+	notificationLayer.Name = "NotificationLayer"
+	notificationLayer.Size = UDim2.new(1, 0, 1, 0)
+	notificationLayer.BackgroundTransparency = 1
+	notificationLayer.ZIndex = 200
+	notificationLayer.Parent = screenGui
+
+	local notifyStack = Instance.new("Frame")
+	notifyStack.Name = "NotifyStack"
+	notifyStack.Size = UDim2.new(0, 300, 1, -32)
+	notifyStack.Position = UDim2.new(1, -16, 0, 16)
+	notifyStack.AnchorPoint = Vector2.new(1, 0)
+	notifyStack.BackgroundTransparency = 1
+	notifyStack.Parent = notificationLayer
+	addList(notifyStack, 8)
+
+	menu._notifications = {}
+
 	-- Top tab bar
 	local tabBar = Instance.new("Frame")
 	tabBar.Name = "TabBar"
@@ -554,6 +573,8 @@ local function createMenu(LibRef, tabs, options)
 		dropdownOverlay = dropdownOverlay,
 		borderFrame = borderFrame,
 		stroke = stroke,
+		notificationLayer = notificationLayer,
+		notifyStack = notifyStack,
 	}
 	menu._mainWidth = mainWidth
 	menu._mainHeight = mainHeight
@@ -2320,6 +2341,157 @@ local function createMenu(LibRef, tabs, options)
 		return base
 	end
 
+	-- ─── Notify ──────────────────────────────────────────────────────────────
+
+	function menu:Notify(opts)
+		opts = opts or {}
+		if self._destroyed then return end
+
+		local title = opts.title or "Notification"
+		local text = opts.text or ""
+		local duration = opts.duration or 3
+		local theme = self:_getTheme()
+		local stack = self._gui.notifyStack
+
+		local wrapper = Instance.new("Frame")
+		wrapper.Name = "NotifyWrapper"
+		wrapper.Size = UDim2.new(1, 0, 0, 0)
+		wrapper.AutomaticSize = Enum.AutomaticSize.Y
+		wrapper.BackgroundTransparency = 1
+		wrapper.Parent = stack
+
+		local card = Instance.new("Frame")
+		card.Name = "NotifyCard"
+		card.Size = UDim2.new(1, 0, 0, 0)
+		card.AutomaticSize = Enum.AutomaticSize.Y
+		card.BackgroundColor3 = theme.elementColor
+		card.BackgroundTransparency = 1
+		card.BorderSizePixel = 0
+		card.Position = UDim2.new(0, 20, 0, 0)
+		card.Parent = wrapper
+		addCorner(card, theme.cornerRadius or 10)
+		addGradient(card, theme.elementColor, theme.backgroundColor2, 145)
+		addStroke(card, theme.strokeColor, 1, 0.35)
+
+		local row = Instance.new("Frame")
+		row.Name = "Row"
+		row.Size = UDim2.new(1, 0, 0, 0)
+		row.AutomaticSize = Enum.AutomaticSize.Y
+		row.BackgroundTransparency = 1
+		row.Parent = card
+		addPadding(row, 10, 10, 10, 10)
+
+		local rowLayout = Instance.new("UIListLayout")
+		rowLayout.FillDirection = Enum.FillDirection.Horizontal
+		rowLayout.Padding = UDim.new(0, 8)
+		rowLayout.SortOrder = Enum.SortOrder.LayoutOrder
+		rowLayout.Parent = row
+
+		local accentBar = Instance.new("Frame")
+		accentBar.Name = "Accent"
+		accentBar.Size = UDim2.new(0, 4, 1, 0)
+		accentBar.BackgroundColor3 = theme.accentColor
+		accentBar.BorderSizePixel = 0
+		accentBar.LayoutOrder = 1
+		accentBar.Parent = row
+		addCorner(accentBar, 2)
+		addGradient(accentBar, theme.accentColor, theme.accentColor2, 90)
+
+		local content = Instance.new("Frame")
+		content.Name = "Content"
+		content.Size = UDim2.new(1, -12, 0, 0)
+		content.AutomaticSize = Enum.AutomaticSize.Y
+		content.BackgroundTransparency = 1
+		content.LayoutOrder = 2
+		content.Parent = row
+		addList(content, 4)
+
+		local titleLbl = Instance.new("TextLabel")
+		titleLbl.Name = "Title"
+		titleLbl.Size = UDim2.new(1, 0, 0, 0)
+		titleLbl.AutomaticSize = Enum.AutomaticSize.Y
+		titleLbl.BackgroundTransparency = 1
+		titleLbl.Text = title
+		titleLbl.TextColor3 = theme.textColor
+		titleLbl.TextSize = 15
+		titleLbl.Font = Enum.Font.GothamBold
+		titleLbl.TextXAlignment = Enum.TextXAlignment.Left
+		titleLbl.TextYAlignment = Enum.TextYAlignment.Top
+		titleLbl.TextWrapped = true
+		titleLbl.TextTransparency = 1
+		titleLbl.LayoutOrder = 1
+		titleLbl.Parent = content
+
+		local textLbl = Instance.new("TextLabel")
+		textLbl.Name = "Text"
+		textLbl.Size = UDim2.new(1, 0, 0, 0)
+		textLbl.AutomaticSize = Enum.AutomaticSize.Y
+		textLbl.BackgroundTransparency = 1
+		textLbl.Text = text
+		textLbl.TextColor3 = theme.subTextColor
+		textLbl.TextSize = 13
+		textLbl.Font = Enum.Font.GothamMedium
+		textLbl.TextXAlignment = Enum.TextXAlignment.Left
+		textLbl.TextYAlignment = Enum.TextYAlignment.Top
+		textLbl.TextWrapped = true
+		textLbl.TextTransparency = 1
+		textLbl.LayoutOrder = 2
+		textLbl.Visible = text ~= ""
+		textLbl.Parent = content
+
+		local handle = {
+			_dismissed = false,
+			_wrapper = wrapper,
+			_card = card,
+			_titleLbl = titleLbl,
+			_textLbl = textLbl,
+		}
+
+		local menuRef = menu
+
+		local function removeFromList()
+			for i, h in ipairs(menuRef._notifications) do
+				if h == handle then
+					table.remove(menuRef._notifications, i)
+					break
+				end
+			end
+		end
+
+		function handle:Dismiss()
+			if self._dismissed or not self._wrapper.Parent then return end
+			self._dismissed = true
+			local outTween = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+			tween(self._card, { BackgroundTransparency = 1, Position = UDim2.new(0, 20, 0, 0) }, outTween):Play()
+			tween(self._titleLbl, { TextTransparency = 1 }, outTween):Play()
+			if self._textLbl.Visible then
+				tween(self._textLbl, { TextTransparency = 1 }, outTween):Play()
+			end
+			task.delay(0.2, function()
+				if self._wrapper and self._wrapper.Parent then
+					self._wrapper:Destroy()
+				end
+			end)
+			removeFromList()
+		end
+
+		table.insert(menuRef._notifications, handle)
+
+		tween(card, { BackgroundTransparency = 0.05, Position = UDim2.new(0, 0, 0, 0) }, TWEEN_OPEN):Play()
+		tween(titleLbl, { TextTransparency = 0 }, TWEEN_OPEN):Play()
+		if text ~= "" then
+			tween(textLbl, { TextTransparency = 0 }, TWEEN_OPEN):Play()
+		end
+
+		task.delay(duration, function()
+			if not handle._dismissed and not menuRef._destroyed then
+				handle:Dismiss()
+			end
+		end)
+
+		return handle
+	end
+
 	-- ─── GetElements / Destroy ───────────────────────────────────────────────
 
 	function menu:GetElements()
@@ -2329,6 +2501,12 @@ local function createMenu(LibRef, tabs, options)
 	function menu:Destroy()
 		if self._destroyed then return end
 		self._destroyed = true
+		if self._notifications then
+			for _, h in ipairs(self._notifications) do
+				h._dismissed = true
+			end
+			self._notifications = {}
+		end
 		if self._openDropdown then
 			self._openDropdown:Close()
 		end

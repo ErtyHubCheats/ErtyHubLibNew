@@ -65,6 +65,17 @@ TMain:AddButton({
 	end,
 })
 
+TMain:AddButton({
+	text = "Show Notify",
+	callback = function()
+		menu:Notify({
+			title = "Hello",
+			text = "This notification disappears in 3 seconds.",
+			duration = 3,
+		})
+	end,
+})
+
 TMain:AddDropdown({
 	text = "Choose option",
 	list = { "A", "B", "C" },

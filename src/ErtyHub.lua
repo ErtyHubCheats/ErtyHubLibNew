@@ -1672,9 +1672,23 @@ local function createMenu(LibRef, tabs, options)
 		listFrame.ZIndex = 50
 		listFrame.Parent = menu._gui.dropdownOverlay
 		addCorner(listFrame, 8)
-
-		local listLayout = addList(listFrame, 2)
 		addPadding(listFrame, 4, 4, 4, 4)
+
+		local listScroll = Instance.new("ScrollingFrame")
+		listScroll.Name = "ListScroll"
+		listScroll.Size = UDim2.new(1, 0, 1, 0)
+		listScroll.BackgroundTransparency = 1
+		listScroll.BorderSizePixel = 0
+		listScroll.ScrollBarThickness = 4
+		listScroll.ScrollBarImageColor3 = theme.accentColor
+		listScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+		listScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+		listScroll.ScrollingDirection = Enum.ScrollingDirection.Y
+		listScroll.ClipsDescendants = true
+		listScroll.ZIndex = 51
+		listScroll.Parent = listFrame
+
+		local listLayout = addList(listScroll, 2)
 
 		local itemButtons = {}
 		local isOpen = false
@@ -1780,7 +1794,7 @@ local function createMenu(LibRef, tabs, options)
 			itemBtn.AutoButtonColor = false
 			itemBtn.Active = true
 			itemBtn.ZIndex = 51
-			itemBtn.Parent = listFrame
+			itemBtn.Parent = listScroll
 			addCorner(itemBtn, 4)
 
 			local check = Instance.new("TextLabel")
@@ -1895,6 +1909,7 @@ local function createMenu(LibRef, tabs, options)
 				displayBtn.TextColor3 = t.textColor
 				arrow.TextColor3 = t.subTextColor
 				listFrame.BackgroundColor3 = t.contentColor
+				listScroll.ScrollBarImageColor3 = t.accentColor
 				for _, btn in pairs(itemButtons) do
 					btn.BackgroundColor3 = t.elementColor
 					btn.TextColor3 = t.textColor
